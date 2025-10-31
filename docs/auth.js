@@ -1,5 +1,5 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-import { getAuth, signInWithRedirect, getRedirectResult, GoogleAuthProvider, setPersistence, browserLocalPersistence } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+import { getAuth, signInWithPopup, GoogleAuthProvider } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 
 console.log('Script started');
 
@@ -11,67 +11,55 @@ const firebaseConfig = {
     storageBucket: "birthday-tracker-d8cec.firebasestorage.app",
     messagingSenderId: "746412138338",
     appId: "1:746412138338:web:253ae60c8164f2e599563b",
-    measurementId: "G-CNXY1KB59G"
 };
 
-console.log('Initializing Firebase...');
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const statusDiv = document.getElementById('status');
 
-console.log('Setting persistence...');
-setPersistence(auth, browserLocalPersistence).then(() => {
-    console.log('Persistence set, checking for redirect result...');
+// Get extension ID from URL parameter
+const urlParams = new URLSearchParams(window.location.search);
+const extensionId = urlParams.get('extensionId');
 
-    // Check if returning from redirect
-    getRedirectResult(auth)
-        .then((result) => {
-            console.log('Redirect result:', result);
-            if (result) {
-                console.log('User signed in:', result.user);
-                statusDiv.innerHTML = '<div class="status success">✅ Success! User: ' + result.user.email + '</div>';
-                statusDiv.innerHTML += '<div>Closing in 3 seconds...</div>';
-
-                setTimeout(() => {
-                    console.log('Closing window...');
-                    window.close();
-                }, 3000);
-            } else {
-                console.log('No redirect result - user needs to sign in');
-                statusDiv.innerHTML = '<div>Ready to sign in</div>';
-            }
-        })
-        .catch((error) => {
-            console.error('Redirect error:', error);
-            statusDiv.innerHTML = '<div class="status error">❌ ' + error.message + '</div>';
-        });
-}).catch((error) => {
-    console.error('Persistence error:', error);
-    statusDiv.innerHTML = '<div class="status error">❌ Persistence error: ' + error.message + '</div>';
-});
-
-// Sign in button
 document.getElementById('signInBtn').addEventListener('click', async () => {
     console.log('Sign in button clicked');
     try {
-        statusDiv.innerHTML = '<div class="status loading">Redirecting to Google...</div>';
+        statusDiv.innerHTML = '<div class="status loading">Opening Google sign-in...</div>';
         const provider = new GoogleAuthProvider();
-        console.log('Calling signInWithRedirect...');
-        await signInWithRedirect(auth, provider);
-        console.log('signInWithRedirect called (should redirect now)');
+
+        // Use popup instead of redirect
+        const result = await signInWithPopup(auth, provider);
+        console.log('User signed in:', result.user);
+
+        statusDiv.innerHTML = '<div class="status success">✅ Success! Signed in as ' + result.user.email + '</div>';
+
+        // Get the ID token
+        const idToken = await result.user.getIdToken();
+        console.log('Got ID token');
+
+        // Send message to extension
+        if (extensionId) {
+            chrome.runtime.sendMessage(extensionId, {
+                type: 'AUTH_SUCCESS',
+                token: idToken,
+                user: {
+                    uid: result.user.uid,
+                    email: result.user.email,
+                    displayName: result.user.displayName,
+                    photoURL: result.user.photoURL
+                }
+            }, (response) => {
+                console.log('Message sent to extension:', response);
+                statusDiv.innerHTML += '<div>Closing tab...</div>';
+                setTimeout(() => window.close(), 1500);
+            });
+        } else {
+            statusDiv.innerHTML += '<div>Please reopen from extension</div>';
+        }
+
     } catch (error) {
         console.error('Sign in error:', error);
         statusDiv.innerHTML = '<div class="status error">❌ ' + error.message + '</div>';
-    }
-});
-
-// Also listen for auth state changes
-auth.onAuthStateChanged((user) => {
-    console.log('Auth state changed:', user);
-    if (user) {
-        console.log('User is signed in:', user.email);
-    } else {
-        console.log('User is signed out');
     }
 });
 
