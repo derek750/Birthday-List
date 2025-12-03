@@ -51,7 +51,6 @@ document.getElementById('signInBtn').addEventListener('click', async () => {
             }, (response) => {
                 console.log('Message sent to extension:', response);
                 statusDiv.innerHTML += '<div>Closing tab...</div>';
-                setTimeout(() => window.close(), 1500);
             });
         } else {
             statusDiv.innerHTML += '<div>Please reopen from extension</div>';
