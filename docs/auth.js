@@ -38,6 +38,8 @@ document.getElementById('signInBtn').addEventListener('click', async () => {
         // Get the ID token
         const idToken = await result.user.getIdToken();
 
+        console.log(idToken)
+
         // Get accessToken
         const credential = GoogleAuthProvider.credentialFromResult(result);
         const accessToken = credential.accessToken;
@@ -52,7 +54,7 @@ document.getElementById('signInBtn').addEventListener('click', async () => {
                     displayName: result.user.displayName,
                     photoURL: result.user.photoURL,
                     accessToken: accessToken,
-                    token: idToken,
+                    idToken: idToken,
                 }
             }, (response) => {
                 console.log('Message sent to extension:', response);
