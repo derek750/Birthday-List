@@ -21,36 +21,41 @@ const statusDiv = document.getElementById('status');
 const urlParams = new URLSearchParams(window.location.search);
 const extensionId = urlParams.get('extensionId');
 
+setPersistence(auth, indexedDBLocalPersistence);
+
 document.getElementById('signInBtn').addEventListener('click', async () => {
-    console.log('Sign in button clicked');
     try {
         statusDiv.innerHTML = '<div class="status loading">Opening Google sign-in...</div>';
         const provider = new GoogleAuthProvider();
 
         // Use popup instead of redirect
         const result = await signInWithPopup(auth, provider);
-        console.log('User signed in:', result.user);
 
-        statusDiv.innerHTML = '<div class="status success">✅ Success! Signed in as ' + result.user.email + '</div>';
+        statusDiv.innerHTML = '<div class="status success">Signed in as ' + result.user.email + '</div>';
 
         // Get the ID token
         const idToken = await result.user.getIdToken();
-        console.log('Got ID token');
+
+        // Get accessToken
+        const credential = GoogleAuthProvider.credentialFromResult(result);
+        const accessToken = credential.accessToken;
 
         // Send message to extension
         if (extensionId) {
             chrome.runtime.sendMessage(extensionId, {
                 type: 'AUTH_SUCCESS',
-                token: idToken,
                 user: {
                     uid: result.user.uid,
                     email: result.user.email,
                     displayName: result.user.displayName,
-                    photoURL: result.user.photoURL
+                    photoURL: result.user.photoURL,
+                    accessToken: accessToken,
+                    token: idToken,
                 }
             }, (response) => {
                 console.log('Message sent to extension:', response);
                 statusDiv.innerHTML += '<div>Closing tab...</div>';
+                setTimeout(() => window.close(), 1500);
             });
         } else {
             statusDiv.innerHTML += '<div>Please reopen from extension</div>';

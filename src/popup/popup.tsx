@@ -1,12 +1,20 @@
 import { useState, useEffect } from 'react';
-import { Cake, Plus, Settings, RefreshCw } from 'lucide-react';
+import { Cake, Plus, Settings, RefreshCw, LogOut } from 'lucide-react';
 import BirthdayList from '../components/birthdayList';
 import AddBirthdayForm from '../components/addBirthdayForm';
-import { birthdayAPI } from '../utils/api';
-import { storage } from '../utils/storage';
+import Login from '../components/login';
+import { useAuth } from '../context/authContext';
+import {
+  initializeAuthFromStorage,
+  getBirthdays,
+  createBirthday,
+  deleteBirthday,
+  signOut
+} from '../utils/firebase';
 import type { Birthday } from '../types/birthday';
 
 function Popup() {
+  const { user, loading: authLoading } = useAuth();
   const [birthdays, setBirthdays] = useState<Birthday[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -14,37 +22,22 @@ function Popup() {
   const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
-    loadBirthdays();
-  }, []);
+    if (user) {
+      loadBirthdays();
+    } else {
+      setLoading(false);
+    }
+  }, [user]);
 
   const loadBirthdays = async () => {
     try {
       setLoading(true);
       setError(null);
-
-      // Try to load from cache first
-      const isCacheFresh = await storage.isCacheFresh();
-      if (isCacheFresh) {
-        const cached = await storage.getCachedBirthdays();
-        setBirthdays(cached);
-        setLoading(false);
-        return;
-      }
-
-      // Fetch from API
-      const data = await birthdayAPI.getBirthdays();
+      const data = await getBirthdays();
       setBirthdays(data);
-      await storage.cacheBirthdays(data);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error loading birthdays:', err);
       setError('Failed to load birthdays. Please try again.');
-      
-      // Try to load from cache as fallback
-      const cached = await storage.getCachedBirthdays();
-      if (cached.length > 0) {
-        setBirthdays(cached);
-        setError('Showing cached data. Unable to sync with server.');
-      }
     } finally {
       setLoading(false);
     }
@@ -56,11 +49,10 @@ function Popup() {
     setSyncing(false);
   };
 
-  const handleAddBirthday = async (data: { name: string; date: string; notes?: string }) => {
+  const handleAddBirthday = async (data: { name: string; date: string; notes?: string; reminderDays?: number }) => {
     try {
-      const newBirthday = await birthdayAPI.createBirthday(data);
-      setBirthdays([...birthdays, newBirthday]);
-      await storage.cacheBirthdays([...birthdays, newBirthday]);
+      const newBirthday = await createBirthday(data);
+      setBirthdays([newBirthday, ...birthdays]);
       setShowAddForm(false);
     } catch (err) {
       console.error('Error adding birthday:', err);
@@ -70,15 +62,37 @@ function Popup() {
 
   const handleDeleteBirthday = async (id: string) => {
     try {
-      await birthdayAPI.deleteBirthday(id);
-      const updated = birthdays.filter(b => b.id !== id);
-      setBirthdays(updated);
-      await storage.cacheBirthdays(updated);
+      await deleteBirthday(id);
+      setBirthdays(birthdays.filter(b => b.id !== id));
     } catch (err) {
       console.error('Error deleting birthday:', err);
       alert('Failed to delete birthday. Please try again.');
     }
   };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      setBirthdays([]);
+    } catch (err) {
+      console.error('Error signing out:', err);
+      alert('Failed to sign out. Please try again.');
+    }
+  };
+
+  // Show loading while checking auth
+  if (authLoading) {
+    return (
+      <div className="w-[400px] h-[600px] bg-white flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+      </div>
+    );
+  }
+
+  // Show login if not authenticated
+  if (!user) {
+    return <Login />;
+  }
 
   return (
     <div className="w-[400px] h-[600px] bg-white">
@@ -87,22 +101,26 @@ function Popup() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Cake size={24} />
-            <h1 className="text-xl font-bold">Birthday Tracker</h1>
+            <div>
+              <h1 className="text-xl font-bold">Birthday Tracker</h1>
+              <p className="text-xs text-purple-100">{user.email}</p>
+            </div>
           </div>
           <div className="flex gap-2">
             <button
               onClick={handleSync}
               disabled={syncing}
               className="p-2 hover:bg-white/20 rounded-lg transition-colors disabled:opacity-50"
-              title="Sync with server"
+              title="Sync"
             >
               <RefreshCw size={18} className={syncing ? 'animate-spin' : ''} />
             </button>
             <button
+              onClick={handleSignOut}
               className="p-2 hover:bg-white/20 rounded-lg transition-colors"
-              title="Settings"
+              title="Sign Out"
             >
-              <Settings size={18} />
+              <LogOut size={18} />
             </button>
           </div>
         </div>
@@ -114,7 +132,7 @@ function Popup() {
           <div className="flex items-center justify-center h-full">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
           </div>
-        ) : error && birthdays.length === 0 ? (
+        ) : error ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
             <p className="text-red-600 mb-4">{error}</p>
             <button
@@ -131,11 +149,6 @@ function Popup() {
           />
         ) : (
           <>
-            {error && (
-              <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-2 rounded-lg mb-4 text-sm">
-                {error}
-              </div>
-            )}
             <BirthdayList
               birthdays={birthdays}
               onDelete={handleDeleteBirthday}
