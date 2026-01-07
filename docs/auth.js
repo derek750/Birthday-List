@@ -1,5 +1,9 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-import { getAuth, signInWithPopup, GoogleAuthProvider } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+import { 
+    getAuth, 
+    signInWithPopup, 
+    GoogleAuthProvider 
+} from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 
 console.log('Script started');
 
@@ -20,8 +24,6 @@ const statusDiv = document.getElementById('status');
 // Get extension ID from URL parameter
 const urlParams = new URLSearchParams(window.location.search);
 const extensionId = urlParams.get('extensionId');
-
-setPersistence(auth, indexedDBLocalPersistence);
 
 document.getElementById('signInBtn').addEventListener('click', async () => {
     try {
@@ -44,7 +46,7 @@ document.getElementById('signInBtn').addEventListener('click', async () => {
         if (extensionId) {
             chrome.runtime.sendMessage(extensionId, {
                 type: 'AUTH_SUCCESS',
-                user: {
+                authData: {
                     uid: result.user.uid,
                     email: result.user.email,
                     displayName: result.user.displayName,
@@ -66,5 +68,3 @@ document.getElementById('signInBtn').addEventListener('click', async () => {
         statusDiv.innerHTML = '<div class="status error">❌ ' + error.message + '</div>';
     }
 });
-
-console.log('Script setup complete');
