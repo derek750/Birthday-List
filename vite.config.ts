@@ -1,11 +1,24 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import { crx } from '@crxjs/vite-plugin';
+import manifest from './src/manifest.json';
 
-// https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), crx({ manifest })],
   server: {
     port: 5001,
-    host: true,
+    strictPort: true,
+    hmr: {
+      port: 5001,
+    },
+    cors: true,
   },
-})
+  build: {
+    rollupOptions: {
+      input: {
+        popup: 'index.html',
+        auth: 'auth.html',
+      },
+    },
+  },
+});
