@@ -19,8 +19,10 @@ import {
     deleteDoc,
     query,
     orderBy,
+    CollectionReference,
 } from 'firebase/firestore';
 import type { Birthday, CreateBirthdayDto } from '../types/birthday';
+import type { FirebaseAuthResult } from '../types/firebaseAuth';
 
 // Firebase config from environment variables
 const firebaseConfig = {
@@ -41,19 +43,20 @@ setPersistence(auth, browserLocalPersistence).catch((error) => {
     console.error('Failed to set persistence:', error);
 });
 
-// Initialize and check for stored auth
+// Initialize Firebase signin
 (async () => {
     const result = await chrome.storage.local.get(['firebaseAuth']);
+    const data : FirebaseAuthResult = result.firebaseAuth as FirebaseAuthResult
     if (result.firebaseAuth && !auth.currentUser) {
 
-        console.log("Recreaing auth session")
+        console.log("Signing into firebase")
 
         try {
-            const { accessToken, idToken } = result.firebaseAuth;
-        
+            const { googleToken } = data;
+
             // Create credential from the stored tokens
-            const credential = GoogleAuthProvider.credential(idToken, accessToken);
-            
+            const credential = GoogleAuthProvider.credential(googleToken);
+
             // Sign in with the credential        
             await signInWithCredential(auth, credential);
             console.log('Signed into Firebase');
@@ -68,23 +71,42 @@ const db = getFirestore(app);
 
 // Sign out
 export const signOut = async (): Promise<void> => {
-    // Revoke Chrome identity token
-    return new Promise((resolve, reject) => {
-        chrome.identity.getAuthToken({ interactive: false }, (token) => {
-            if (token) {
-                chrome.identity.removeCachedAuthToken({ token }, async () => {
-                    try {
-                        await firebaseSignOut(auth);
-                        resolve();
-                    } catch (error) {
-                        reject(error);
-                    }
-                });
-            } else {
-                firebaseSignOut(auth).then(resolve).catch(reject);
-            }
+    const result: chrome.identity.GetAuthTokenResult | undefined =
+        await new Promise((resolve) => {
+            chrome.identity.getAuthToken({ interactive: false }, (result) => {
+                if (chrome.runtime.lastError) {
+                    resolve(undefined);
+                } else {
+                    resolve(result);
+                }
+            });
         });
+
+    const token: string | undefined = result?.token;
+
+    if (token) {
+        await new Promise<void>((resolve, reject) => {
+            chrome.identity.removeCachedAuthToken({ token }, () => {
+                if (chrome.runtime.lastError) {
+                    reject(chrome.runtime.lastError);
+                } else {
+                    resolve();
+                }
+            });
+        });
+    }
+
+    await new Promise<void>((resolve, reject) => {
+        chrome.storage.local.remove(["firebaseAuth"],() => {
+                if (chrome.runtime.lastError) {
+                    reject(chrome.runtime.lastError);
+                } else {
+                    resolve();
+                }
+            }
+        );
     });
+    await firebaseSignOut(auth);
 };
 
 // Get current user
@@ -98,9 +120,10 @@ export const onAuthChange = (callback: (user: User | null) => void) => {
 };
 
 // Get user's birthdays collection reference
-const getBirthdaysCollection = (userId: string) => {
-    return collection(db, 'users', userId, 'birthdays');
-};
+function getBirthdaysCollection(userId : string) : CollectionReference {
+    const data : CollectionReference = collection(db, 'users', userId, 'birthdays');
+    return data;
+}
 
 // Create birthday
 export const createBirthday = async (data: CreateBirthdayDto): Promise<Birthday> => {

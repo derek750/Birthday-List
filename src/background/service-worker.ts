@@ -5,7 +5,6 @@ chrome.runtime.onMessageExternal.addListener((message: any, sender: any, sendRes
   if (message.type === 'AUTH_SUCCESS') {
     console.log('Auth success, storing full auth data');
 
-    // Store ALL auth data so we can reconstruct the session
     chrome.storage.local.set({
       firebaseAuth: {
         uid: message.authData.uid,
@@ -14,6 +13,7 @@ chrome.runtime.onMessageExternal.addListener((message: any, sender: any, sendRes
         photoURL: message.authData.photoURL,
         accessToken: message.authData.accessToken,
         idToken: message.authData.idToken,
+        googleToken: message.authData.googleToken,
         timestamp: Date.now()
       }
     }, () => {
