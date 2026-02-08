@@ -1,5 +1,5 @@
 // Listen for auth messages from the auth page
-chrome.runtime.onMessageExternal.addListener((message: any, sender: any, sendResponse: any) => {
+chrome.runtime.onMessageExternal.addListener((message: any, _sender: any, sendResponse: any) => {
   console.log('Received external message:', message);
 
   if (message.type === 'AUTH_SUCCESS') {

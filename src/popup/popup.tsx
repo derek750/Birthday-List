@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Cake, Plus, Settings, RefreshCw, LogOut } from 'lucide-react';
+import { Cake, Plus, RefreshCw, LogOut } from 'lucide-react';
 import BirthdayList from '../components/birthdayList';
 import AddBirthdayForm from '../components/addBirthdayForm';
 import Login from '../components/login';

@@ -17,7 +17,6 @@ export default defineConfig({
     rollupOptions: {
       input: {
         popup: 'index.html',
-        auth: 'auth.html',
       },
     },
   },

@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { differenceInDays, format, parseISO } from 'date-fns';
+import { differenceInDays, parseISO } from 'date-fns';
 import BirthdayItem from './birthdayItem';
 import type { Birthday, BirthdayWithDaysUntil } from '../types/birthday';
 
