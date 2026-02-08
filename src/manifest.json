@@ -1,28 +1,36 @@
 {
-  "manifest_version": 3,
-  "name": "Birthday Tracker",
-  "version": "1.0.0",
-  "description": "Track and remember important birthdays with Google Sign-In",
-  "permissions": [
-    "storage",
-    "notifications",
-    "alarms",
-    "tabs",
-    "identity"
-  ],
-  "host_permissions": [
-    "https://*.firebaseio.com/*",
-    "https://*.googleapis.com/*",
-    "https://*.firebaseapp.com/*"
-  ],
-  "action": {
-    "default_popup": "index.html"
-  },
-  "background": {
-    "service_worker": "src/background/service-worker.ts",
-    "type": "module"
-  },
-  "externally_connectable": {
-    "matches": ["https://derek750.github.io/*"]
-  }
+    "manifest_version": 3,
+    "name": "Birthday Tracker",
+    "version": "1.0.0",
+    "description": "Track and remember important birthdays with Google Sign-In",
+    "permissions": [
+        "storage",
+        "notifications",
+        "alarms",
+        "tabs",
+        "identity"
+    ],
+    "host_permissions": [
+        "https://*.firebaseio.com/*",
+        "https://*.googleapis.com/*",
+        "https://*.firebaseapp.com/*"
+    ],
+    "action": {
+        "default_popup": "index.html"
+    },
+    "background": {
+        "service_worker": "src/background/service-worker.ts",
+        "type": "module"
+    },
+    "externally_connectable": {
+        "matches": [
+            "https://derek750.github.io/*"
+        ]
+    },
+    "icons": {
+        "16": "cake16.jpg",
+        "32": "cake32.jpg",
+        "48": "cake48.jpg",
+        "128": "cake128.jpg"
+    }
 }
