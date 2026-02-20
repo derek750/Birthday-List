@@ -2,7 +2,6 @@ import { createContext, useContext, useState, useEffect } from 'react';
 import { onAuthChange } from '../utils/firebase';
 import type { ReactNode } from 'react';
 import type { user } from '../types/user';
-import type { FirebaseAuthResult } from '../types/firebaseAuth';
 
 interface AuthContextType {
     user: user | null;
@@ -33,31 +32,21 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const firebaseListener = onAuthChange((firebaseUser) => {
+        const unsubscribe = onAuthChange((firebaseUser) => {
             if (firebaseUser) {
-                chrome.storage.local.get(['firebaseAuth'], (result: any) => {
-                    const data: FirebaseAuthResult | null = result.firebaseAuth as FirebaseAuthResult;
-                    if (data) {
-                        // create user
-                        const userInfo: user = {
-                            uid: data.uid,
-                            email: data.email,
-                            displayName: data.displayName,
-                            photoURL: data.photoURL
-                        }
-                        setUser(userInfo as user);
-                        
-                    }
-                    setLoading(false);
+                setUser({
+                    uid: firebaseUser.uid,
+                    email: firebaseUser.email ?? '',
+                    displayName: firebaseUser.displayName ?? '',
+                    photoURL: firebaseUser.photoURL ?? ''
                 });
+            } else {
+                setUser(null);
             }
-            else{
-                setLoading(false);
-            }
-        })
-        return () => {
-            firebaseListener();
-        };
+            setLoading(false);
+        });
+
+        return () => unsubscribe();
     }, []);
 
     const signOutUser = () => {
