@@ -43,12 +43,19 @@ setPersistence(auth, indexedDBLocalPersistence).catch((error) => {
 
 async function getChromeIdentityAccessToken(options: { interactive: boolean }): Promise<{ token: string | null; error: string | null }> {
   return new Promise<{ token: string | null; error: string | null }>((resolve) => {
-    chrome.identity.getAuthToken({ interactive: options.interactive }, (token) => {
+    chrome.identity.getAuthToken({ interactive: options.interactive }, (resultOrToken) => {
       if (chrome.runtime.lastError) {
         const error = chrome.runtime.lastError.message || 'Unknown error';
         console.error('Chrome identity error:', error);
         resolve({ token: null, error });
-      } else if (token) {
+        return;
+      }
+      // Chrome 105+ passes GetAuthTokenResult { token?: string }; older Chrome may pass the token string directly
+      const token =
+        typeof resultOrToken === 'string'
+          ? resultOrToken
+          : resultOrToken?.token ?? null;
+      if (token) {
         resolve({ token, error: null });
       } else {
         resolve({ token: null, error: 'No token received from chrome.identity.getAuthToken' });
